@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>平面圖形移動練習 - 動態生成</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
+            background-color: #f0f4f8;
+            padding: 20px;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .paper {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            padding: 30px;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            background: #e8f4fd;
+            padding: 10px 15px;
+            border-radius: 6px;
+        }
+        .stat-item {
+            font-weight: bold;
+        }
+        .instruction {
+            text-align: center;
+            font-size: 1em;
+            color: #555;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        .question-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+        }
+        .q-num {
+            font-weight: bold;
+            font-size: 1.3em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .visuals {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            margin-bottom: 25px;
+        }
+        .grid-box {
+            width: 150px;
+            height: 150px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 4px;
+            background-color: #fff;
+            border: 0px solid #555;
+            border-radius: 6px;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+        .cell {
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.4em;
+            color: white;
+            border-radius: 3px;
+            user-select: none;
+        }
+        .cell.filled { 
+            background-color: #555555; 
+        }
+        .arrow {
+            font-size: 2.5em;
+            color: #999;
+            font-weight: bold;
+        }
+        .label {
+            font-size: 0.9em;
+            color: #777;
+            text-align: center;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .input-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .input-label {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        .input-box {
+            width: 60px;
+            height: 50px;
+            font-size: 1.5em;
+            text-align: center;
+            border: 3px solid #555;
+            border-radius: 8px;
+            background: #fff;
+            font-weight: bold;
+        }
+        .input-box:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .btn-area {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        button {
+            padding: 12px 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-submit {
+            background-color: #27ae60;
+            color: white;
+        }
+        .btn-submit:hover {
+            background-color: #219a52;
+        }
+        .btn-next {
+            background-color: #3498db;
+            color: white;
+        }
+        .btn-next:hover {
+            background-color: #2980b9;
+        }
+        .btn-next:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .feedback {
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+        }
+        .feedback.correct {
+            background-color: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        .feedback.wrong {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #27ae60;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        @media print {
+            .btn-area, .progress-bar { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="paper">
+    <h1>🧩 平面圖形移動練習</h1>
+    
+    <div class="stats">
+        <span class="stat-item">題號：<span id="q-number">1</span></span>
+        <span class="stat-item">答對：<span id="correct-count">0</span></span>
+        <span class="stat-item">答錯：<span id="wrong-count">0</span></span>
+    </div>
+    
+    <div class="instruction">
+        左圖與右圖都是由 <strong>5 個正方形</strong> 組成。<br>
+        請找出左圖中「編號幾」的正方形，移動後可以變成右圖？
+    </div>
+    
+    <div class="question-area">
+        <div class="q-num">第 <span id="current-q">1</span> 題</div>
+        
+        <div class="visuals">
+            <div>
+                <div class="label">左圖</div>
+                <div class="grid-box" id="left-grid"></div>
+            </div>
+            <div class="arrow">➜</div>
+            <div>
+                <div class="label">右圖</div>
+                <div class="grid-box" id="right-grid"></div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <span class="input-label">答案：</span>
+            <input type="text" class="input-box" id="answer-input" maxlength="1" placeholder="?">
+        </div>
+        
+        <div class="btn-area">
+            <button class="btn-submit" id="btn-submit" onclick="checkAnswer()">提交答案</button>
+            <button class="btn-next" id="btn-next" onclick="generateQuestion()" disabled>下一題</button>
+        </div>
+        
+        <div class="feedback" id="feedback"></div>
+    </div>
+    
+    <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+    </div>
+</div>
+
+<script>
+    // 遊戲狀態
+    let currentQuestion = 1;
+    let correctCount = 0;
+    let wrongCount = 0;
+    let currentAnswer = 0;
+    let isAnswered = false;
+    
+    // 3x3 網格的索引映射 (0-8)
+    const gridIndices = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8]
+    ];
+    
+    // 生成一個隨機的5格方塊形狀
+    function generateShape() {
+        let positions = [];
+        while (positions.length < 5) {
+            let pos = Math.floor(Math.random() * 9);
+            if (!positions.includes(pos)) {
+                positions.push(pos);
+            }
+        }
+        return positions.sort((a, b) => a - b);
+    }
+    
+    // 檢查形狀是否連通（可選，讓題目更合理）
+    function isConnected(positions) {
+        if (positions.length === 0) return false;
+        let visited = new Set();
+        let queue = [positions[0]];
+        visited.add(positions[0]);
+        
+        while (queue.length > 0) {
+            let current = queue.shift();
+            let row = Math.floor(current / 3);
+            let col = current % 3;
+            
+            // 檢查上下左右
+            let neighbors = [
+                {r: row-1, c: col}, {r: row+1, c: col},
+                {r: row, c: col-1}, {r: row, c: col+1}
+            ];
+            
+            for (let n of neighbors) {
+                if (n.r >= 0 && n.r < 3 && n.c >= 0 && n.c < 3) {
+                    let idx = n.r * 3 + n.c;
+                    if (positions.includes(idx) && !visited.has(idx)) {
+                        visited.add(idx);
+                        queue.push(idx);
+                    }
+                }
+            }
+        }
+        
+        return visited.size === positions.length;
+    }
+    
+    // 生成有效的5格形狀（確保連通）
+    function generateValidShape() {
+        let shape;
+        let attempts = 0;
+        do {
+            shape = generateShape();
+            attempts++;
+        } while (!isConnected(shape) && attempts < 100);
+        return shape;
+    }
+    
+    // 渲染網格
+    function renderGrid(gridElement, positions, showNumbers = false, numbers = []) {
+        gridElement.innerHTML = '';
+        for (let i = 0; i < 9; i++) {
+            let cell = document.createElement('div');
+            cell.className = 'cell';
+            if (positions.includes(i)) {
+                cell.classList.add('filled');
+                if (showNumbers && numbers.length > 0) {
+                    let numIndex = positions.indexOf(i);
+                    if (numIndex < numbers.length) {
+                        cell.textContent = numbers[numIndex];
+                    }
+                }
+            }
+            gridElement.appendChild(cell);
+        }
+    }
+    
+    // 生成新題目
+    function generateQuestion() {
+        isAnswered = false;
+        document.getElementById('answer-input').value = '';
+        document.getElementById('answer-input').disabled = false;
+        document.getElementById('btn-submit').disabled = false;
+        document.getElementById('btn-next').disabled = true;
+        document.getElementById('feedback').className = 'feedback';
+        document.getElementById('feedback').textContent = '';
+        document.getElementById('answer-input').focus();
+        
+        // 生成左圖形狀
+        let leftShape = generateValidShape();
+        
+        // 隨機選擇一個方塊移動
+        let moveIndex = Math.floor(Math.random() * 5);
+        let pieceToMove = leftShape[moveIndex];
+        
+        // 找到可以移動到的新位置
+        let availablePositions = [];
+        for (let i = 0; i < 9; i++) {
+            if (!leftShape.includes(i)) {
+                availablePositions.push(i);
+            }
+        }
+        
+        // 隨機選擇一個新位置
+        let newPosition = availablePositions[Math.floor(Math.random() * availablePositions.length)];
+        
+        // 生成右圖形狀
+        let rightShape = leftShape.filter(pos => pos !== pieceToMove);
+        rightShape.push(newPosition);
+        rightShape.sort((a, b) => a - b);
+        
+        // 渲染左圖（帶編號）
+        renderGrid(document.getElementById('left-grid'), leftShape, true, [1, 2, 3, 4, 5]);
+        
+        // 渲染右圖（不帶編號）
+        renderGrid(document.getElementById('right-grid'), rightShape, false, []);
+        
+        // 記錄答案（移動的是第幾個編號的方塊）
+        currentAnswer = moveIndex + 1;
+        
+        // 更新題號
+        document.getElementById('current-q').textContent = currentQuestion;
+        document.getElementById('q-number').textContent = currentQuestion;
+        
+        // 更新進度條
+        let total = correctCount + wrongCount + 1;
+        let progress = (correctCount / total) * 100;
+        document.getElementById('progress-fill').style.width = progress + '%';
+    }
+    
+    // 檢查答案
+    function checkAnswer() {
+        if (isAnswered) return;
+        
+        let userInput = document.getElementById('answer-input').value.trim();
+        if (!userInput || userInput < 1 || userInput > 5) {
+            alert('請輸入 1-5 之間的數字！');
+            return;
+        }
+        
+        isAnswered = true;
+        document.getElementById('answer-input').disabled = true;
+        document.getElementById('btn-submit').disabled = true;
+        document.getElementById('btn-next').disabled = false;
+        
+        let feedback = document.getElementById('feedback');
+        
+        if (parseInt(userInput) === currentAnswer) {
+            correctCount++;
+            document.getElementById('correct-count').textContent = correctCount;
+            feedback.textContent = '✅ 答對了！太棒了！';
+            feedback.className = 'feedback correct';
+        } else {
+            wrongCount++;
+            document.getElementById('wrong-count').textContent = wrongCount;
+            feedback.textContent = '❌ 答錯了！正確答案是 ' + currentAnswer;
+            feedback.className = 'feedback wrong';
+        }
+        
+        // 更新進度條
+        let total = correctCount + wrongCount;
+        let progress = (correctCount / total) * 100;
+        document.getElementById('progress-fill').style.width = progress + '%';
+        
+        // 自動聚焦到下一題按鈕
+        document.getElementById('btn-next').focus();
+    }
+    
+    // 支援 Enter 鍵提交
+    document.getElementById('answer-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            if (!isAnswered) {
+                checkAnswer();
+            } else {
+                generateQuestion();
+            }
+        }
+    });
+    
+    // 初始化第一題
+    generateQuestion();
+</script>
+
+</body>
+</html>
