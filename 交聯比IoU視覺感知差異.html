@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>交联比(IoU) · 平移偏移可视化</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: system-ui, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            background: #f5f7fb;
+            margin: 0;
+            padding: 24px 20px;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.01em;
+        }
+        .sub {
+            color: #475569;
+            border-left: 4px solid #3b82f6;
+            padding-left: 16px;
+            margin: 16px 0 24px 0;
+            font-size: 1rem;
+            background: #f8fafc;
+            border-radius: 0 12px 12px 0;
+        }
+        .legend-symbol {
+            background: #eef2ff;
+            padding: 8px 16px;
+            border-radius: 40px;
+            display: inline-block;
+            font-size: 0.85rem;
+            margin-bottom: 18px;
+            font-weight: 500;
+        }
+        .card-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+            margin-bottom: 48px;
+        }
+        .card {
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.02);
+            padding: 20px 16px 20px 16px;
+            text-align: center;
+            transition: transform 0.1s ease;
+            flex: 1;
+            min-width: 260px;
+            border: 1px solid #e2e8f0;
+        }
+        .card canvas {
+            display: block;
+            margin: 0 auto;
+            background: #fefce8;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 2px solid #f1f5f9;
+        }
+        .card-title {
+            font-weight: 650;
+            font-size: 1.2rem;
+            margin: 16px 0 8px 0;
+        }
+        .iou-line {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin: 8px 0;
+            font-family: 'JetBrains Mono', monospace;
+            background: #f1f5f9;
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 60px;
+            letter-spacing: 0.5px;
+        }
+        .offset-desc {
+            font-size: 0.85rem;
+            color: #2c3e66;
+            margin-top: 12px;
+            background: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 24px;
+            display: inline-block;
+            font-weight: 500;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            flex-wrap: wrap;
+        }
+        .legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .color-box {
+            width: 18px;
+            height: 18px;
+            border-radius: 6px;
+        }
+        .interactive-section {
+            background: white;
+            border-radius: 28px;
+            padding: 20px 24px 28px 24px;
+            margin-top: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .interactive-title {
+            font-weight: 650;
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .slider-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0 20px 0;
+        }
+        input[type="range"] {
+            flex: 2;
+            min-width: 200px;
+            height: 5px;
+            border-radius: 5px;
+            background: #cbd5e1;
+        }
+        .offset-value {
+            background: #1e293b;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-family: monospace;
+            font-weight: 500;
+        }
+        .interactive-canvas-wrapper {
+            text-align: center;
+            margin: 16px 0 8px 0;
+        }
+        canvas.interactive-canvas {
+            background: #fefce8;
+            border-radius: 24px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.1);
+            border: 2px solid #e2e8f0;
+            width: 100%;
+            height: auto;
+        }
+        .note {
+            background: #f1f5f9;
+            padding: 14px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 28px;
+            color: #0f172a;
+            border-left: 4px solid #3b82f6;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+        @media (max-width: 800px) {
+            .card-grid {
+                gap: 16px;
+            }
+            .card canvas {
+                width: 200px;
+                height: 200px;
+            }
+            .iou-line {
+                font-size: 1rem;
+                padding: 4px 12px;
+            }
+        }
+        .badge-symbol {
+            background: #e6f0ff;
+            border-radius: 32px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        hr {
+            margin: 12px 0;
+            border-color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📐 交聯比(IoU) · 平移偏移的視覺差距</h1>
+    <div class="sub">
+        🧩 兩個大小相同的檢測框（正方形），僅發生水平平移 + 垂直平移（無縮放）。<br>
+        <strong>Δx</strong> = 水平偏移量 (單位: 框邊長的百分比) &nbsp;&nbsp;|&nbsp;&nbsp;
+        <strong>Δy</strong> = 垂直偏移量 (單位: 框邊長的百分比)<br>
+        交聯比(IoU) 隨偏移增加「非線性」衰減 → 人眼覺得「還行」，數值卻已大幅下降。
+    </div>
+
+    <!-- 固定符號標示 -->
+    <div class="legend-symbol">
+        📐 邊長 L = 100% (相對坐標) &nbsp;&nbsp;|&nbsp;&nbsp; 真實框(GT)與預測框尺寸相同<br>
+        偏移量 Δx , Δy 皆以邊長百分比表示（例：Δx=10% 代表水平偏移邊長的10%）
+    </div>
+
+    <!-- 三个固定平移示例：偏移量使用百分比 -->
+    <div class="card-grid">
+        <!-- 示例1: 幾乎重合 (Δx=2%, Δy=2%) -->
+        <div class="card">
+            <canvas id="canvas1" width="240" height="240" style="width:240px; height:240px;"></canvas>
+            <div class="card-title">幾乎重合</div>
+            <div class="iou-line" id="iou1">交聯比(IoU)= —</div>
+            <div class="offset-desc" id="offset1"></div>
+        </div>
+
+        <!-- 示例2: 中等偏移 (Δx=22%, Δy=12%) -->
+        <div class="card">
+            <canvas id="canvas2" width="240" height="240" style="width:240px; height:240px;"></canvas>
+            <div class="card-title">中等偏移</div>
+            <div class="iou-line" id="iou2">交聯比(IoU)= —</div>
+            <div class="offset-desc" id="offset2"></div>
+        </div>
+
+        <!-- 示例3: 較大偏移 (Δx=48%, Δy=32%) -->
+        <div class="card">
+            <canvas id="canvas3" width="240" height="240" style="width:240px; height:240px;"></canvas>
+            <div class="card-title">較大偏移</div>
+            <div class="iou-line" id="iou3">交聯比(IoU)= —</div>
+            <div class="offset-desc" id="offset3"></div>
+        </div>
+    </div>
+
+    <!-- 交互式演示: 动态平移演示 (偏移单位: 百分比) -->
+    <div class="interactive-section">
+        <div class="interactive-title">
+            🎚️ 動態平移演示 (百分比偏移)
+            <span style="font-size:0.75rem; background:#eef2ff; padding:4px 12px; border-radius:40px;">即時計算交聯比(IoU)</span>
+        </div>
+        <div class="slider-container">
+            <span style="font-weight:500;">水平偏移 Δx (%)</span>
+            <input type="range" id="dxSlider" min="0" max="70" step="1" value="18">
+            <span id="dxVal" class="offset-value">18 %</span>
+        </div>
+        <div class="slider-container">
+            <span style="font-weight:500;">垂直偏移 Δy (%)</span>
+            <input type="range" id="dySlider" min="0" max="70" step="1" value="12">
+            <span id="dyVal" class="offset-value">12 %</span>
+        </div>
+        <div class="interactive-canvas-wrapper">
+            <canvas id="interactiveCanvas" width="320" height="320" style="width:320px; height:320px;" class="interactive-canvas"></canvas>
+        </div>
+        <div style="text-align: center; margin-top: 12px;">
+            <div style="font-size: 1.8rem; font-weight: 700; font-family: monospace; background:#f1f5f9; display: inline-block; padding: 6px 24px; border-radius: 60px;" id="interactiveIou">交聯比(IoU)= —</div>
+            <div style="margin-top: 12px; font-size:0.85rem; color:#2563eb;" id="interactiveDesc"></div>
+        </div>
+        <div class="legend">
+            <span><div class="color-box" style="background: #16a34a;"></div> 真實框 (Ground Truth)</span>
+            <span><div class="color-box" style="background: #dc2626; opacity:0.7;"></div> 預測框 (Prediction)</span>
+            <span><div class="color-box" style="background: #facc15;"></div> 重疊區域 (交集)</span>
+        </div>
+        <div style="font-size:0.75rem; text-align:center; margin-top: 12px; color:#475569;">
+            Δx , Δy 皆為相對於邊長的百分比，邊長 = 100% (基準長度)
+        </div>
+    </div>
+
+    <div class="note">
+        💡 <strong>交聯比(IoU) 計算公式（標準定義）</strong> ：IoU = 交集面積 / 並集面積。<br>
+        📐 此處兩個矩形大小相同 (邊長設為基準 1，即 100%)，偏移 Δx、Δy (單位：%)。交集寬 = (1 - Δx/100)，交集高 = (1 - Δy/100)，<br>
+        ⇒ 交集面積 = (1-Δx/100)*(1-Δy/100) ，並集面積 = 1+1 - 交集面積 = 2 - 交集面積。<br>
+        ✅ 範例：Δx=10%，Δy=10% → 交聯比(IoU) = (0.9*0.9) / (2 - 0.81) = 0.81 / 1.19 ≈ 0.6807。<br>
+        🧠 平移偏移造成交聯比(IoU)劇烈下降，人眼容易低估其衰減程度，此即「冰冷指標與視覺的距離」。
+    </div>
+    <footer>交聯比(IoU) = 交集面積 / 並集面積 | 兩個正方形邊長相同，偏移單位為邊長百分比</footer>
+</div>
+
+<script>
+    (function() {
+        // ---------- 全局設定 ----------
+        // 為了簡化且讓偏移單位為百分比，定義邊長基準 100 (單位為px, 但實際上我們使用抽象坐標，對應百分比)
+        // 真實框 (GT) 左上角座標 (固定) : 讓邊長 = 100 (代表 100% 邊長)，繪圖時直接映射 canvas 座標，保持比例。
+        // 因為 canvas 大小不同: 固定畫板用240x240 (靜態卡片) 與 320x320 (動態)，但相對位置採用比例繪製: 真實框左上角 (70,70) 邊長 100。
+        // 這樣偏移量 Δx_percent, Δy_percent 直接換算成像素位移 = 偏移百分比 * 邊長/100。
+        const baseLen = 100;        // 邊長基準 = 100px (抽象單位)
+        const gtRect = { x: 70, y: 70, w: baseLen, h: baseLen };   // 真實框固定 (70,70) 到 (170,170)
+        
+        // 輔助函數: 根據百分比偏移(0~100)計算預測框左上角 (偏移量 = 百分比 * baseLen /100)
+        function getPredRectByOffset(dxPercent, dyPercent) {
+            let offsetX = (dxPercent / 100) * baseLen;
+            let offsetY = (dyPercent / 100) * baseLen;
+            return {
+                x: gtRect.x + offsetX,
+                y: gtRect.y + offsetY,
+                w: baseLen,
+                h: baseLen
+            };
+        }
+        
+        // 計算交聯比(IoU) (標準矩形)
+        function computeIoU(rectA, rectB) {
+            const left = Math.max(rectA.x, rectB.x);
+            const top = Math.max(rectA.y, rectB.y);
+            const right = Math.min(rectA.x + rectA.w, rectB.x + rectB.w);
+            const bottom = Math.min(rectA.y + rectA.h, rectB.y + rectB.h);
+            if (left >= right || top >= bottom) return 0;
+            const interArea = (right - left) * (bottom - top);
+            const areaA = rectA.w * rectA.h;
+            const areaB = rectB.w * rectB.h;
+            const unionArea = areaA + areaB - interArea;
+            return interArea / unionArea;
+        }
+        
+        // 繪圖函數 (交集/真實框/預測框)
+        function drawCanvasWithIoU(canvas, gt, pred, iouValue, dxPercent, dyPercent, isInteractive = false) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = "#fefce8";
+            ctx.fillRect(0, 0, w, h);
+            // 淺色網格 (輔助線)
+            ctx.save();
+            ctx.globalAlpha = 0.25;
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 0.6;
+            for (let i = 0; i < w; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, h);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(w, i);
+                ctx.stroke();
+            }
+            ctx.restore();
+            
+            // 繪製交集區域 (金黃色)
+            const left = Math.max(gt.x, pred.x);
+            const top = Math.max(gt.y, pred.y);
+            const right = Math.min(gt.x + gt.w, pred.x + pred.w);
+            const bottom = Math.min(gt.y + gt.h, pred.y + pred.h);
+            if (left < right && top < bottom) {
+                ctx.beginPath();
+                ctx.rect(left, top, right - left, bottom - top);
+                ctx.fillStyle = "#facc15";
+                ctx.globalAlpha = 0.55;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                ctx.strokeStyle = "#ca8a04";
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+            }
+            
+            // 繪製真實框 (半透綠)
+            ctx.beginPath();
+            ctx.rect(gt.x, gt.y, gt.w, gt.h);
+            ctx.fillStyle = "#16a34a";
+            ctx.globalAlpha = 0.25;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = "#15803d";
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            
+            // 繪製預測框 (半透紅)
+            ctx.beginPath();
+            ctx.rect(pred.x, pred.y, pred.w, pred.h);
+            ctx.fillStyle = "#dc2626";
+            ctx.globalAlpha = 0.25;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = "#b91c1c";
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            
+            // 額外強化邊界對比
+            ctx.beginPath();
+            ctx.rect(gt.x, gt.y, gt.w, gt.h);
+            ctx.strokeStyle = "#15803d";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.rect(pred.x, pred.y, pred.w, pred.h);
+            ctx.strokeStyle = "#b91c1c";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 標題文字不需要畫在canvas上，避免干擾
+        }
+        
+        // ---------- 三個靜態範例 (使用百分比偏移) ----------
+        // 案例1: Δx=2%, Δy=2% ; 案例2: Δx=22%, Δy=12% ; 案例3: Δx=48%, Δy=32%
+        const staticExamples = [
+            { dxPercent: 2, dyPercent: 2, canvasId: "canvas1", iouId: "iou1", offsetId: "offset1", title: "幾乎重合" },
+            { dxPercent: 22, dyPercent: 12, canvasId: "canvas2", iouId: "iou2", offsetId: "offset2", title: "中等偏移" },
+            { dxPercent: 48, dyPercent: 32, canvasId: "canvas3", iouId: "iou3", offsetId: "offset3", title: "較大偏移" }
+        ];
+        
+        function updateStaticCards() {
+            for (let ex of staticExamples) {
+                const canvas = document.getElementById(ex.canvasId);
+                if (!canvas) continue;
+                const predRect = getPredRectByOffset(ex.dxPercent, ex.dyPercent);
+                const iou = computeIoU(gtRect, predRect);
+                const iouFormatted = iou.toFixed(4);
+                const iouElement = document.getElementById(ex.iouId);
+                if (iouElement) {
+                    iouElement.innerText = `交聯比(IoU)= ${iouFormatted}`;
+                }
+                const offsetSpan = document.getElementById(ex.offsetId);
+                if (offsetSpan) {
+                    offsetSpan.innerHTML = `偏移量 Δx=${ex.dxPercent}% , Δy=${ex.dyPercent}%`;
+                }
+                drawCanvasWithIoU(canvas, gtRect, predRect, iou, ex.dxPercent, ex.dyPercent, false);
+            }
+        }
+        
+        // ---------- 交互式模塊 (百分比滑塊) ----------
+        const dxSlider = document.getElementById("dxSlider");
+        const dySlider = document.getElementById("dySlider");
+        const dxValSpan = document.getElementById("dxVal");
+        const dyValSpan = document.getElementById("dyVal");
+        const interactiveCanvas = document.getElementById("interactiveCanvas");
+        const interactiveIouSpan = document.getElementById("interactiveIou");
+        const interactiveDescSpan = document.getElementById("interactiveDesc");
+        
+        function updateInteractive() {
+            let dxPercent = parseFloat(dxSlider.value);
+            let dyPercent = parseFloat(dySlider.value);
+            dxValSpan.innerText = dxPercent + " %";
+            dyValSpan.innerText = dyPercent + " %";
+            
+            const predRect = getPredRectByOffset(dxPercent, dyPercent);
+            const iou = computeIoU(gtRect, predRect);
+            const iouDisplay = iou.toFixed(4);
+            interactiveIouSpan.innerText = `交聯比(IoU)= ${iouDisplay}`;
+            
+            let visualFeedback = "";
+            if (iou >= 0.7) visualFeedback = "✅ 高重疊，視覺上很接近 (人眼感覺偏移不大)";
+            else if (iou >= 0.5) visualFeedback = "⚠️ 中等重疊，人眼仍能接受但數值已低於0.7";
+            else if (iou >= 0.3) visualFeedback = "📉 重疊明顯減少，人眼認為偏差較大，IoU下降劇烈";
+            else visualFeedback = "❌ 嚴重偏移，幾乎沒有重疊，IoU趨近0";
+            interactiveDescSpan.innerHTML = `📌 視覺感受：${visualFeedback} ｜ 當 Δx=${dxPercent}% , Δy=${dyPercent}% 時，交聯比(IoU) = ${iouDisplay}`;
+            
+            drawCanvasWithIoU(interactiveCanvas, gtRect, predRect, iou, dxPercent, dyPercent, true);
+        }
+        
+        dxSlider.addEventListener("input", updateInteractive);
+        dySlider.addEventListener("input", updateInteractive);
+        
+        // 初始化所有
+        updateStaticCards();
+        updateInteractive();
+        
+        // 補充：為了確保偏移量超過一定範圍重疊為0時繪圖正確 (已處理)
+        // 加強註解: 在note區域也更新描述，對應前面使用者提到偏移10%情況的正確公式。
+        // 確保顯示完全符合: 交聯比(IoU)文字統一，無任何「交並」出現。
+        
+        // 額外驗證控制台不報錯
+        console.log("交聯比(IoU) 平移演示已啟動 | 單位: 百分比偏移 | 公式: IoU = intersection/union");
+        
+        // 為了更符合語意: 在所有顯示IoU的地方均顯示「交聯比(IoU)= ...」
+        // 並且初始時三個卡片偏移顯示Δx、Δy 百分比說明無誤。
+        // 另外因為靜態卡片中偏移量較大時，確保畫板內容完整顯示，偏移矩形部分可能超出canvas邊界但不會影響計算，完整繪製無需裁剪。
+        // 增強用戶體驗: 滑塊上方添加提示
+        
+        // 修正一個潛在視覺: 靜態卡片動態修正偏移時若因為邊長邊界超出畫布但仍可接受，不改動。
+        // 另外由於三個卡片裡面的偏移48%時預測框左上角偏移48px (因為邊長100px)，真實框x=70, 預測框x=118, 仍在畫布(240寬)內可視。
+    })();
+</script>
+</body>
+</html>
